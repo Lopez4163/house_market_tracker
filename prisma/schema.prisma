@@ -1,0 +1,55 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usage {
+  id        String   @id @default(cuid())
+  period    String   @unique // e.g. "2025-11"
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+
+model Market {
+  id        String   @id
+  scope     String
+  city      String?
+  state     String?
+  zipGroup  Json?
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  snapshots Snapshot[]
+}
+
+model Snapshot {
+  id           Int      @id @default(autoincrement())
+  marketId     String
+  propertyType String?  // <— this is what route.ts expects
+  asOf         DateTime
+  kpis         Json
+  series       Json
+
+  market       Market   @relation(fields: [marketId], references: [id])
+
+  @@index([marketId, propertyType])
+}
+
+
+model ApiUsage {
+  id        Int      @id @default(autoincrement())
+  provider  String   // "rentcast"
+  year      Int
+  month     Int
+  calls     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, year, month]) // <— this line is IMPORTANT
+}
