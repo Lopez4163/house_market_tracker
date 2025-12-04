@@ -20,23 +20,57 @@ const TIMEFRAMES: { id: Timeframe; label: string }[] = [
   { id: "MAX", label: "Max" },
 ];
 
-type SnapshotResponse = {
-  market: { id: string; city: string; state: string };
-  asOf: string;
-  dimensions: { propertyType?: PropertyType };
-  kpis: {
-    medianPrice: number;
-    medianRent: number;
-    ppsf: number;
-    dom: number;
-    confidence: number;
-  };
-  series: { date: string; medianPrice: number; medianRent: number }[];
-  meta: any;
+type KpisShape = {
+  medianPrice: number | null;
+  medianRent: number | null;
+  ppsf: number | null;
+  dom: number | null;
+  confidence: number | null;
+};
+
+type SeriesPoint = {
+  date: string;
+  medianPrice: number | null;
+  medianRent: number | null;
+};
+
+type PerTypePayload = {
+  kpis: KpisShape;
+  series: SeriesPoint[];
+};
+
+// 👇 This is the shape of the snapshot row in the DB
+type SnapshotRow = {
+  id: number;
+  marketId: string;
+  asOf: string; // Prisma Date -> JSON string
+  dimensions: Record<string, any> | null;
+  kpis: KpisShape;
+  series: SeriesPoint[];
+  sourceMeta?: {
+    perType?: {
+      sfh?: PerTypePayload;
+      condo?: PerTypePayload;
+      "2to4"?: PerTypePayload;
+    };
+  } | null;
+};
+
+// 👇 What the API returns from /api/v1/summary
+type SummaryApiResponse = {
+  snapshot: SnapshotRow;
+  stale?: boolean;
+  error?: string;
+};
+
+// 👇 What we actually keep in state (snapshot + flags)
+type SnapshotResponse = SnapshotRow & {
+  stale?: boolean;
+  error?: string;
 };
 
 type Props = {
-  marketId: string; // e.g. "city:PA:Scranton"
+  marketId: string;
 };
 
 export default function MarketDetailClient({ marketId }: Props) {
@@ -51,18 +85,22 @@ export default function MarketDetailClient({ marketId }: Props) {
     async function load() {
       setLoading(true);
       try {
-        const params = new URLSearchParams({
-          marketId,
-          type,
-        });
+        const params = new URLSearchParams({ marketId });
 
         const res = await fetch(`/api/v1/summary?${params.toString()}`, {
           signal: controller.signal,
         });
 
         if (!res.ok) throw new Error("Failed to fetch snapshot");
-        const json = (await res.json()) as SnapshotResponse;
-        setData(json);
+
+        const json = (await res.json()) as SummaryApiResponse;
+
+        // Merge stale/error flags into the snapshot row
+        setData({
+          ...json.snapshot,
+          stale: json.stale,
+          error: json.error,
+        });
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         console.error(err);
@@ -74,21 +112,27 @@ export default function MarketDetailClient({ marketId }: Props) {
     load();
 
     return () => controller.abort();
-  }, [marketId, type]);
+  }, [marketId]);
 
-  const kpis = data?.kpis ?? ({} as any);
-  const series = data?.series ?? [];
+  const baseKpis = data?.kpis ?? ({} as KpisShape);
+  const baseSeries = data?.series ?? [];
 
-  // --- Timeframe filtering logic ---
+  const perType = data?.sourceMeta?.perType;
+  const typePayload = perType ? perType[type] : undefined;
+
+  // Active KPIs/series depend on selected type if per-type data exists
+  const activeKpis: KpisShape = (typePayload?.kpis ?? baseKpis) as KpisShape;
+  const activeSeries: SeriesPoint[] = (typePayload?.series ??
+    baseSeries) as SeriesPoint[];
+
   const filteredSeries = useMemo(() => {
-    if (!data || timeframe === "MAX") return series;
+    if (!data || timeframe === "MAX") return activeSeries;
 
-    // Use asOf as the "current" reference point
     const asOf = new Date(data.asOf);
-    if (Number.isNaN(asOf.getTime())) return series;
+    if (Number.isNaN(asOf.getTime())) return activeSeries;
 
     const yearsBack =
-      timeframe === "1Y" ? 1 : timeframe === "3Y" ? 3 : 5; // 5Y fallback
+      timeframe === "1Y" ? 1 : timeframe === "3Y" ? 3 : 5;
 
     const cutoff = new Date(
       asOf.getFullYear() - yearsBack,
@@ -96,18 +140,17 @@ export default function MarketDetailClient({ marketId }: Props) {
       asOf.getDate()
     );
 
-    return series.filter((point) => {
+    return activeSeries.filter((point) => {
       const d = new Date(point.date);
       if (Number.isNaN(d.getTime())) return false;
       return d >= cutoff;
     });
-  }, [data, series, timeframe]);
+  }, [data, activeSeries, timeframe]);
 
   return (
     <div className="space-y-6">
       {/* Top controls: type + timeframe + last updated */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Property type toggle */}
         <div className="inline-flex rounded-full border border-slate-800 bg-slate-900/80 p-1">
           {TYPES.map((t) => (
             <button
@@ -124,7 +167,6 @@ export default function MarketDetailClient({ marketId }: Props) {
           ))}
         </div>
 
-        {/* Right side: timeframe toggle + last updated */}
         <div className="flex items-center gap-4 justify-between sm:justify-end">
           <div className="inline-flex rounded-full border border-slate-800 bg-slate-900/80 p-1 text-[11px] sm:text-xs">
             {TIMEFRAMES.map((tf) => (
@@ -145,28 +187,29 @@ export default function MarketDetailClient({ marketId }: Props) {
           {data && (
             <p className="text-[11px] text-slate-400 whitespace-nowrap">
               Last updated {new Date(data.asOf).toLocaleString()}
+              {data.stale && " · using last known data"}
             </p>
           )}
         </div>
       </div>
 
       {loading && !data && (
-        <p className="text-xs text-slate-400">
-          Loading {type.toUpperCase()} data…
-        </p>
+        <p className="text-xs text-slate-400">Loading market data…</p>
       )}
 
       {data && (
         <>
-          {/* KPI Cards (same as before) */}
+          {/* KPI Cards */}
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
               <p className="text-[11px] text-slate-400 uppercase tracking-wide">
                 Avg Home Price
               </p>
               <p className="mt-2 text-xl font-semibold">
-                {kpis.medianPrice
-                  ? `$${Math.round(kpis.medianPrice).toLocaleString()}`
+                {activeKpis.medianPrice != null
+                  ? `$${Math.round(
+                      activeKpis.medianPrice
+                    ).toLocaleString()}`
                   : "—"}
               </p>
             </div>
@@ -176,8 +219,10 @@ export default function MarketDetailClient({ marketId }: Props) {
                 Est. Monthly Rent
               </p>
               <p className="mt-2 text-xl font-semibold">
-                {kpis.medianRent
-                  ? `$${Math.round(kpis.medianRent).toLocaleString()}`
+                {activeKpis.medianRent != null
+                  ? `$${Math.round(
+                      activeKpis.medianRent
+                    ).toLocaleString()}`
                   : "—"}
               </p>
             </div>
@@ -187,7 +232,9 @@ export default function MarketDetailClient({ marketId }: Props) {
                 Price / Sq Ft
               </p>
               <p className="mt-2 text-xl font-semibold">
-                {kpis.ppsf ? `$${kpis.ppsf.toFixed(0)}` : "—"}
+                {activeKpis.ppsf != null
+                  ? `$${activeKpis.ppsf.toFixed(0)}`
+                  : "—"}
               </p>
             </div>
 
@@ -196,9 +243,11 @@ export default function MarketDetailClient({ marketId }: Props) {
                 Days on Market
               </p>
               <p className="mt-2 text-xl font-semibold">
-                {kpis.dom ?? "—"}
+                {activeKpis.dom != null ? activeKpis.dom : "—"}
               </p>
             </div>
+            
+
           </section>
 
           {/* Price Series with timeframe label */}

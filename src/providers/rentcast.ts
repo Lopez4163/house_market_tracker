@@ -14,10 +14,11 @@ export type ProviderSnapshot = {
     confidence: number | null;
   };
   series: {
-    date: string; // YYYY-MM-DD
+    date: string;
     medianPrice: number | null;
     medianRent: number | null;
   }[];
+  sourceMeta?: any; // per-type breakdown, provider info, etc.
 };
 
 const RENTCAST_BASE_URL =
@@ -30,15 +31,6 @@ if (!RENTCAST_API_KEY) {
   );
 }
 
-/**
- * Parse your `marketId` into city/state or zip.
- *
- * Supports:
- * - "city:PA:Scranton"
- * - "zip:18508"
- *
- * Adjust this if your Market.id format is different.
- */
 function parseMarketId(marketId: string): {
   city?: string;
   state?: string;
@@ -56,14 +48,9 @@ function parseMarketId(marketId: string): {
     return { zip: rest[0] };
   }
 
-  // Fallback: you can decide how to handle weird ids
   return {};
 }
 
-/**
- * Low-level helper to call a RentCast endpoint.
- * Every call goes through `withRentCastBudget`, so it increments your ApiUsage.
- */
 async function rentcastFetch(
   path: string,
   searchParams: Record<string, string>
@@ -79,12 +66,13 @@ async function rentcastFetch(
       url.searchParams.set(k, v)
     );
 
+    console.log("[RentCast] Calling:", url.toString());
+
     const res = await fetch(url.toString(), {
       headers: {
         "X-Api-Key": RENTCAST_API_KEY,
       },
-      // optional: let Next.js cache at edge if you want
-      next: { revalidate: 60 * 60 }, // 1 hour
+      next: { revalidate: 60 * 60 },
     });
 
     if (!res.ok) {
@@ -98,157 +86,354 @@ async function rentcastFetch(
   });
 }
 
-/**
- * Simple median helper.
- */
-function median(nums: number[]): number | null {
-  const arr = nums.filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
-  if (!arr.length) return null;
-  const mid = Math.floor(arr.length / 2);
-  return arr.length % 2 === 0
-    ? (arr[mid - 1] + arr[mid]) / 2
-    : arr[mid];
+// ===== /v1/markets types + fetch =====
+
+type MarketDataResponse = {
+  id: string;
+  zipCode?: string;
+  saleData?: any;
+  rentalData?: any;
+};
+
+async function fetchMarketData(
+  marketId: string
+): Promise<MarketDataResponse> {
+  const location = parseMarketId(marketId);
+  const params: Record<string, string> = {};
+
+  if (location.zip) {
+    params.zipCode = location.zip;
+  } else if (location.city && location.state) {
+    params.city = location.city;
+    params.state = location.state;
+  } else {
+    throw new Error(
+      `[RentCast] Unsupported marketId format for /v1/markets: ${marketId}`
+    );
+  }
+
+  const raw = await rentcastFetch("/v1/markets", params);
+
+  // Be defensive: if RentCast ever returns an array, grab the first item
+  if (Array.isArray(raw)) {
+    if (!raw[0]) {
+      throw new Error(
+        `[RentCast] /v1/markets returned an empty array for ${marketId}`
+      );
+    }
+    return raw[0] as MarketDataResponse;
+  }
+
+  return raw as MarketDataResponse;
 }
 
-/**
- * Build a basic monthly time series from raw sales + rental data.
- * Buckets by YYYY-MM-01 and computes medianPrice/medianRent per month.
- */
-function buildSeries(sales: any[], rentals: any[]) {
-  type Bucket = { prices: number[]; rents: number[] };
+// ===== helpers =====
+
+type SimpleKpis = {
+  medianPrice: number | null;
+  medianRent: number | null;
+  ppsf: number | null;
+  dom: number | null;
+  confidence: number | null;
+};
+
+function computeConfidence(sampleSize: number): number {
+  if (sampleSize >= 200) return 0.95;
+  if (sampleSize >= 100) return 0.9;
+  if (sampleSize >= 40) return 0.7;
+  if (sampleSize > 0) return 0.5;
+  return 0.2;
+}
+
+function mapPropertyTypeToBucket(
+  propertyType: string | null | undefined
+): "sfh" | "condo" | "2to4" | "other" {
+  const raw = (propertyType ?? "").toLowerCase();
+
+  if (raw.includes("single")) return "sfh";
+  if (raw.includes("condo")) return "condo";
+  if (raw.includes("multi")) return "2to4";
+
+  return "other";
+}
+
+// overall KPIs from saleData/rentalData (latest window)
+function computeKpisFromMarketData(
+  saleData: any | undefined,
+  rentalData: any | undefined
+): SimpleKpis {
+  const medianPrice: number | null = saleData?.medianPrice ?? null;
+  const medianRent: number | null = rentalData?.medianRent ?? null;
+  const ppsf: number | null =
+    saleData?.medianPricePerSquareFoot ?? null;
+  const dom: number | null =
+    saleData?.medianDaysOnMarket ?? null;
+
+  const saleCount = saleData?.totalListings ?? 0;
+  const rentalCount = rentalData?.totalListings ?? 0;
+  const sampleSize = saleCount + rentalCount;
+
+  const confidence = computeConfidence(sampleSize);
+
+  return { medianPrice, medianRent, ppsf, dom, confidence };
+}
+
+// overall series from saleData.history + rentalData.history
+function buildOverallSeriesFromHistory(
+  saleData?: any,
+  rentalData?: any
+): { date: string; medianPrice: number | null; medianRent: number | null }[] {
+  type Bucket = {
+    date: string;
+    medianPrice: number | null;
+    medianRent: number | null;
+  };
+
   const buckets = new Map<string, Bucket>();
 
-  function addToBucket(dateStr: string | undefined, price?: number, rent?: number) {
-    if (!dateStr) return;
+  // helper to normalize date -> YYYY-MM
+  function monthKeyFromDate(dateStr: string | undefined): string | null {
+    if (!dateStr) return null;
     const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return;
-
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}-01`;
-
-    let bucket = buckets.get(key);
-    if (!bucket) {
-      bucket = { prices: [], rents: [] };
-      buckets.set(key, bucket);
-    }
-
-    if (typeof price === "number") bucket.prices.push(price);
-    if (typeof rent === "number") bucket.rents.push(rent);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 7); // "YYYY-MM"
   }
 
-  sales.forEach((s) =>
-    addToBucket(
-      s.closeDate ?? s.lastSaleDate,
-      s.price ?? s.lastSalePrice,
-      undefined
-    )
-  );
-  rentals.forEach((r) =>
-    addToBucket(
-      r.listDate ?? r.lastSeenDate,
-      undefined,
-      r.rent ?? r.listPrice ?? r.monthly_rent
-    )
-  );
+  // sales side
+  if (saleData?.history) {
+    Object.values(saleData.history as any).forEach((entry: any) => {
+      const key = monthKeyFromDate(entry.date);
+      if (!key) return;
+      const existing =
+        buckets.get(key) ??
+        ({
+          date: entry.date,
+          medianPrice: null,
+          medianRent: null,
+        } as Bucket);
 
-  return Array.from(buckets.entries())
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([date, bucket]) => ({
-      date,
-      medianPrice: median(bucket.prices),
-      medianRent: median(bucket.rents),
-    }));
+      if (typeof entry.medianPrice === "number") {
+        existing.medianPrice = entry.medianPrice;
+      }
+
+      buckets.set(key, existing);
+    });
+  }
+
+  // rentals side
+  if (rentalData?.history) {
+    Object.values(rentalData.history as any).forEach((entry: any) => {
+      const key = monthKeyFromDate(entry.date);
+      if (!key) return;
+      const existing =
+        buckets.get(key) ??
+        ({
+          date: entry.date,
+          medianPrice: null,
+          medianRent: null,
+        } as Bucket);
+
+      if (typeof entry.medianRent === "number") {
+        existing.medianRent = entry.medianRent;
+      }
+
+      buckets.set(key, existing);
+    });
+  }
+
+  return Array.from(buckets.values()).sort((a, b) => {
+    const da = new Date(a.date).getTime();
+    const db = new Date(b.date).getTime();
+    return da - db;
+  });
 }
 
-/**
- * High-level aggregate: calls RentCast, aggregates metrics, returns normalized data.
- *
- * NOTE: This example uses two endpoints (`/v1/sales` and `/v1/rentals`).
- * That means **2 real RentCast calls per market refresh**, and both are tracked
- * via `withRentCastBudget` inside `rentcastFetch`.
- *
- * You can tweak endpoints/fields to match your RentCast plan & docs.
- */
-export async function fetchRentCastAggregate(
-  marketId: string,
-  dims: Dimensions
-): Promise<ProviderSnapshot> {
-  const location = parseMarketId(marketId);
-
-  // ---- 1) Fetch recent sales data (for medianPrice, ppsf, dom) ----
-  const salesParams: Record<string, string> = {
-    limit: "50",
-    status: "Closed",
+// per-type series for one bucket (sfh/condo/2to4)
+function buildTypeSeries(
+  bucketName: "sfh" | "condo" | "2to4",
+  saleData?: any,
+  rentalData?: any
+): { date: string; medianPrice: number | null; medianRent: number | null }[] {
+  type Bucket = {
+    date: string;
+    medianPrice: number | null;
+    medianRent: number | null;
   };
 
-  if (location.zip) {
-    salesParams.zip = location.zip;
-  } else if (location.city && location.state) {
-    salesParams.city = location.city;
-    salesParams.state = location.state;
+  const buckets = new Map<string, Bucket>();
+
+  function monthKeyFromDate(dateStr: string | undefined): string | null {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 7);
   }
 
-  // TODO: adjust endpoint path to match RentCast docs if needed
-  const sales = (await rentcastFetch("/v1/sales", salesParams)) ?? [];
+  // sales history per type
+  if (saleData?.history) {
+    Object.values(saleData.history as any).forEach((entry: any) => {
+      const key = monthKeyFromDate(entry.date);
+      if (!key) return;
 
-  const salePrices: number[] = sales
-    .map((s: any) => s.price ?? s.lastSalePrice)
-    .filter((v: any) => typeof v === "number");
+      const typeRow = (entry.dataByPropertyType ?? []).find(
+        (row: any) =>
+          mapPropertyTypeToBucket(row.propertyType) === bucketName
+      );
+      if (!typeRow) return;
 
-  const salePpsf: number[] = sales
-    .map((s: any) => s.pricePerSquareFoot ?? s.price_per_sqft)
-    .filter((v: any) => typeof v === "number");
+      const existing =
+        buckets.get(key) ??
+        ({
+          date: entry.date,
+          medianPrice: null,
+          medianRent: null,
+        } as Bucket);
 
-  const domValues: number[] = sales
-    .map((s: any) => s.daysOnMarket ?? s.days_on_market)
-    .filter((v: any) => typeof v === "number");
+      if (typeof typeRow.medianPrice === "number") {
+        existing.medianPrice = typeRow.medianPrice;
+      }
 
-  const medianPrice = median(salePrices);
-  const ppsf = median(salePpsf);
-  const dom = median(domValues);
+      buckets.set(key, existing);
+    });
+  }
 
-  // ---- 2) Fetch recent rentals data (for medianRent) ----
-  const rentalsParams: Record<string, string> = {
-    limit: "50",
-    status: "Active",
+  // rental history per type
+  if (rentalData?.history) {
+    Object.values(rentalData.history as any).forEach((entry: any) => {
+      const key = monthKeyFromDate(entry.date);
+      if (!key) return;
+
+      const typeRow = (entry.dataByPropertyType ?? []).find(
+        (row: any) =>
+          mapPropertyTypeToBucket(row.propertyType) === bucketName
+      );
+      if (!typeRow) return;
+
+      const existing =
+        buckets.get(key) ??
+        ({
+          date: entry.date,
+          medianPrice: null,
+          medianRent: null,
+        } as Bucket);
+
+      if (typeof typeRow.medianRent === "number") {
+        existing.medianRent = typeRow.medianRent;
+      }
+
+      buckets.set(key, existing);
+    });
+  }
+
+  return Array.from(buckets.values()).sort((a, b) => {
+    const da = new Date(a.date).getTime();
+    const db = new Date(b.date).getTime();
+    return da - db;
+  });
+}
+
+// per-type KPIs + series
+function computePerTypeFromMarketData(
+  saleData?: any,
+  rentalData?: any
+): {
+  sfh?: {
+    kpis: SimpleKpis;
+    series: { date: string; medianPrice: number | null; medianRent: number | null }[];
   };
+  condo?: {
+    kpis: SimpleKpis;
+    series: { date: string; medianPrice: number | null; medianRent: number | null }[];
+  };
+  "2to4"?: {
+    kpis: SimpleKpis;
+    series: { date: string; medianPrice: number | null; medianRent: number | null }[];
+  };
+} {
+  const result: any = {};
 
-  if (location.zip) {
-    rentalsParams.zip = location.zip;
-  } else if (location.city && location.state) {
-    rentalsParams.city = location.city;
-    rentalsParams.state = location.state;
+  const saleTypes = saleData?.dataByPropertyType ?? [];
+  const rentalTypes = rentalData?.dataByPropertyType ?? [];
+
+  function findTypeRow(arr: any[], bucket: "sfh" | "condo" | "2to4") {
+    return arr.find(
+      (row: any) => mapPropertyTypeToBucket(row.propertyType) === bucket
+    );
   }
 
-  // TODO: adjust endpoint path to match RentCast docs if needed
-  const rentals = (await rentcastFetch("/v1/rentals", rentalsParams)) ?? [];
+  (["sfh", "condo", "2to4"] as const).forEach((bucket) => {
+    const saleRow = findTypeRow(saleTypes, bucket);
+    const rentRow = findTypeRow(rentalTypes, bucket);
 
-  const rentalRents: number[] = rentals
-    .map((r: any) => r.rent ?? r.listPrice ?? r.monthly_rent)
-    .filter((v: any) => typeof v === "number");
+    if (!saleRow && !rentRow) {
+      return; // no data for this type
+    }
 
-  const medianRent = median(rentalRents);
+    const medianPrice: number | null = saleRow?.medianPrice ?? null;
+    const medianRent: number | null = rentRow?.medianRent ?? null;
+    const ppsf: number | null =
+      saleRow?.medianPricePerSquareFoot ?? null;
+    const dom: number | null =
+      saleRow?.medianDaysOnMarket ?? null;
 
-  // ---- 3) Very simple "confidence" metric based on sample size ----
-  const sampleSize = salePrices.length + rentalRents.length;
-  const confidence =
-    sampleSize >= 50 ? 0.9 : sampleSize >= 20 ? 0.7 : sampleSize > 0 ? 0.5 : 0.2;
+    const saleCount = saleRow?.totalListings ?? 0;
+    const rentalCount = rentRow?.totalListings ?? 0;
+    const sampleSize = saleCount + rentalCount;
+    const confidence = computeConfidence(sampleSize);
 
-  // ---- 4) Build monthly series ----
-  const series = buildSeries(sales, rentals);
-
-  return {
-    asOf: new Date(),
-    dimensions: dims,
-    kpis: {
+    const kpis: SimpleKpis = {
       medianPrice,
       medianRent,
       ppsf,
       dom,
       confidence,
+    };
+
+    const series = buildTypeSeries(bucket, saleData, rentalData);
+
+    result[bucket] = { kpis, series };
+  });
+
+  return result;
+}
+
+/**
+ * High-level aggregate using /v1/markets:
+ *  - overall KPIs + series from saleData/rentalData + history
+ *  - per-type KPIs + series in sourceMeta.perType for sfh / condo / 2–4 units
+ */
+export async function fetchRentCastAggregate(
+  marketId: string,
+  dims: Dimensions
+): Promise<ProviderSnapshot> {
+  const marketData = await fetchMarketData(marketId);
+
+  const saleData = marketData.saleData;
+  const rentalData = marketData.rentalData;
+
+  const overallKpis = computeKpisFromMarketData(saleData, rentalData);
+  const overallSeries = buildOverallSeriesFromHistory(
+    saleData,
+    rentalData
+  );
+
+  const perType = computePerTypeFromMarketData(saleData, rentalData);
+
+  const asOf =
+    saleData?.lastUpdatedDate ??
+    rentalData?.lastUpdatedDate ??
+    new Date().toISOString();
+
+  return {
+    asOf: new Date(asOf),
+    dimensions: dims,
+    kpis: overallKpis,
+    series: overallSeries,
+    sourceMeta: {
+      provider: "rentcast_market_data",
+      rawMarketId: marketData.id,
+      zipCode: marketData.zipCode ?? null,
+      perType,
     },
-    series,
   };
 }

@@ -36,6 +36,8 @@ model Snapshot {
   asOf         DateTime
   kpis         Json
   series       Json
+  sourceMeta   Json?    // 👈 NEW
+
 
   market       Market   @relation(fields: [marketId], references: [id])
 

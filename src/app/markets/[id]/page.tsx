@@ -7,20 +7,29 @@ import MarketDetailClient from "@/components/MarketDetailClient";
 type Params = { id: string };
 type ParamsInput = Params | Promise<Params>;
 
+// Simple alias map: old city IDs -> canonical zip IDs
+const MARKET_ALIAS: Record<string, string> = {
+  "city:PA:Scranton": "zip:18504",
+  "city:NY:Queens": "zip:11368",
+};
+
 export default async function MarketDetailPage({
   params,
 }: {
   params: ParamsInput;
 }) {
   // Normalize both Promise and plain object:
-  const resolved = await Promise.resolve(params); // { id: "city%3APA%3AScranton" }
+  const resolved = await Promise.resolve(params); // e.g. { id: "city%3APA%3AScranton" } or { id: "zip%3A18504" }
 
   const encodedId = resolved?.id;
   if (!encodedId) notFound();
 
-  const id = decodeURIComponent(encodedId); // "city:PA:Scranton"
+  const rawId = decodeURIComponent(encodedId); // "city:PA:Scranton" or "zip:18504"
 
-  // Fetch Market
+  // If it's an old city-style ID, map it to the new zip-based ID.
+  const id = MARKET_ALIAS[rawId] ?? rawId; // -> "zip:18504"
+
+  // Fetch Market by canonical ID
   const market = await prisma.market.findUnique({
     where: { id },
   });
@@ -42,7 +51,7 @@ export default async function MarketDetailPage({
           </p>
         </header>
 
-        {/* All KPI + chart logic moves into the client component */}
+        {/* KPI + chart logic lives in client component */}
         <MarketDetailClient marketId={market.id} />
       </div>
     </div>

@@ -1,13 +1,13 @@
+// src/app/api/v1/markets/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slugify";
 import { fetchRentCastAggregate } from "@/providers/rentcast";
+import { resolveZip } from "@/lib/geo";
 
 type PropertyType = "sfh" | "condo" | "2to4";
 
 type PostBody = {
-  city: string;
-  state: string;
+  zip: string;
   propertyType?: PropertyType;
 };
 
@@ -16,45 +16,51 @@ function isFresh(asOf: Date, ttlHours = 24) {
 }
 
 // POST /api/v1/markets
-// Add a city → ensure fresh snapshot → return market + snapshot
+// Add a ZIP → ensure fresh snapshot → return market + snapshot
 export async function POST(req: Request) {
   const body = (await req.json()) as PostBody;
-  const city = body.city?.trim();
-  const state = body.state?.trim();
+  const rawZip = body.zip ?? "";
+  const zip = rawZip.toString().trim();
   const propertyType = body.propertyType ?? "sfh";
 
-  if (!city || !state) {
+  if (!/^\d{5}$/.test(zip)) {
     return NextResponse.json(
-      { error: "city and state are required" },
+      { error: "zip (5 digits) is required" },
       { status: 400 }
     );
   }
 
-  const marketId = slugify(`${city}-${state}`); // e.g. "scranton-pa"
+  const marketId = `zip:${zip}`;
 
-  // 1. Find or create Market
-  let market = await prisma.market.findUnique({
+  // 1. Resolve ZIP → city/state
+  const loc = await resolveZip(zip);
+  const city = loc?.city ?? null;
+  const state = loc?.stateCode ?? null;
+
+  // 2. Upsert Market
+  const market = await prisma.market.upsert({
     where: { id: marketId },
+    update: {
+      city: city ?? undefined,
+      state: state ?? undefined,
+      // keep scope as "city" so it matches existing enum
+      scope: "city",
+    },
+    create: {
+      id: marketId,
+      city,
+      state,
+      scope: "city",
+    },
   });
 
-  if (!market) {
-    market = await prisma.market.create({
-      data: {
-        id: marketId,
-        scope: "city",
-        city,
-        state,
-      },
-    });
-  }
-
-  // 2. Find latest snapshot
+  // 3. Find latest snapshot
   let snapshot = await prisma.snapshot.findFirst({
     where: { marketId },
     orderBy: { asOf: "desc" },
   });
 
-  // 3. If no snapshot or stale → call provider + create new snapshot
+  // 4. If no snapshot or stale → call RentCast + create new snapshot
   if (!snapshot || !isFresh(snapshot.asOf)) {
     const dims = { propertyType };
     const aggregate = await fetchRentCastAggregate(marketId, dims);
@@ -63,7 +69,6 @@ export async function POST(req: Request) {
       data: {
         marketId,
         asOf: aggregate.asOf,
-        dimensions: aggregate.dimensions as any,
         kpis: aggregate.kpis as any,
         series: aggregate.series as any,
         sourceMeta: aggregate.sourceMeta as any,
@@ -78,7 +83,6 @@ export async function POST(req: Request) {
 // List all markets with their latest snapshot (for cards)
 export async function GET() {
   const markets = await prisma.market.findMany({
-    where: { scope: "city" },
     include: {
       snapshots: {
         orderBy: { asOf: "desc" },
