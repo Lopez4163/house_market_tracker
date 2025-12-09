@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import MarketDetailClient from "@/components/MarketDetailClient";
+import { EmbedMap } from "@/components/ui/embedmap";
 
 // Params can be an object or a Promise depending on Next/Turbopack behavior
 type Params = { id: string };
@@ -43,12 +44,10 @@ export default async function MarketDetailPage({
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         <header className="space-y-1">
           <h1 className="text-3xl font-bold">{cityLabel}</h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-50">
             Market ID: <code>{market.id}</code>
           </p>
-          <p className="text-xs text-slate-400">
-            Toggle between different property types to see prices and rents.
-          </p>
+            <EmbedMap zipCode={id}/>
         </header>
 
         {/* KPI + chart logic lives in client component */}

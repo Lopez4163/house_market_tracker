@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
+import { EmbedMap } from "./ui/embedmap";
 
 type PropertyType = "sfh" | "condo" | "2to4";
 type Timeframe = "1Y" | "3Y" | "5Y" | "MAX";
@@ -152,6 +153,7 @@ export default function MarketDetailClient({ marketId }: Props) {
       {/* Top controls: type + timeframe + last updated */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="inline-flex rounded-full border border-slate-800 bg-slate-900/80 p-1">
+        
           {TYPES.map((t) => (
             <button
               key={t.id}
@@ -198,6 +200,7 @@ export default function MarketDetailClient({ marketId }: Props) {
       )}
 
       {data && (
+        
         <>
           {/* KPI Cards */}
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MarketCard } from "@/components/ui/MarketCard";
 
 type MarketCardSummary = {
   asOf: string;
@@ -10,7 +11,7 @@ type MarketCardSummary = {
   dom?: number;
 };
 
-type MarketCard = {
+export type MarketItem = {
   id: string;             // e.g. "zip:11368"
   city: string | null;    // e.g. "Corona"
   state: string | null;   // e.g. "NY"
@@ -19,7 +20,7 @@ type MarketCard = {
 
 export default function DashboardPage() {
   const [zip, setZip] = useState("");
-  const [markets, setMarkets] = useState<MarketCard[]>([]);
+  const [markets, setMarkets] = useState<MarketItem[]>([]);
   const [loadingAdd, setLoadingAdd] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,7 +76,7 @@ export default function DashboardPage() {
       setMarkets((prev) => {
         // avoid duplicates: replace if exists
         const existingIndex = prev.findIndex((m) => m.id === market.id);
-        const newItem: MarketCard = {
+        const newItem: MarketItem = {
           id: market.id,
           city: market.city,
           state: market.state,
@@ -155,71 +156,65 @@ export default function DashboardPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {markets.map((m) => {
-                const zipFromId = m.id.startsWith("zip:")
-                  ? m.id.slice(4)
-                  : m.id;
-
-                const title =
-                  m.city && m.state
-                    ? `${m.city}, ${m.state} ${zipFromId}`
-                    : `ZIP ${zipFromId}`;
-
                 return (
-                  <Link
-                    key={m.id}
-                    href={`/markets/${encodeURIComponent(m.id)}`}
-                  >
-                    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 hover:border-sky-500/80 hover:bg-slate-900 transition cursor-pointer">
-                      <div className="flex justify-between gap-2">
-                        <div>
-                          <h3 className="font-semibold text-sm">
-                            {title}
-                          </h3>
-                          {m.summary?.asOf && (
-                            <p className="text-[10px] text-slate-500">
-                              Updated{" "}
-                              {new Date(
-                                m.summary.asOf
-                              ).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                  <MarketCard key={m.id} market={m} />
+                  // <Link
+                  //   key={m.id}
+                  //   href={`/markets/${encodeURIComponent(m.id)}`}
+                  // >
 
-                      {m.summary ? (
-                        <div className="mt-3 space-y-1 text-xs">
-                          {m.summary.medianPrice && (
-                            <p>
-                              Avg home price{" "}
-                              <span className="font-semibold text-sky-300">
-                                $
-                                {Math.round(
-                                  m.summary.medianPrice
-                                ).toLocaleString()}
-                              </span>
-                            </p>
-                          )}
-                          {m.summary.medianRent && (
-                            <p className="text-slate-400">
-                              Est. rent $
-                              {Math.round(
-                                m.summary.medianRent
-                              ).toLocaleString()}
-                            </p>
-                          )}
-                          {m.summary.dom && (
-                            <p className="text-slate-400">
-                              Days on market {m.summary.dom}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="mt-3 text-xs text-slate-500">
-                          No snapshot yet.
-                        </p>
-                      )}
-                    </div>
-                  </Link>
+                  //   <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 hover:border-sky-500/80 hover:bg-slate-900 transition cursor-pointer">
+                  //     <EmbedMap zipFromId={zipFromId} />
+                  //     <div className="flex justify-between gap-2">
+                  //       <div>
+                  //         <h3 className="font-semibold text-sm">
+                  //           {title}
+                  //         </h3>
+                  //         {m.summary?.asOf && (
+                  //           <p className="text-[10px] text-slate-500">
+                  //             Updated{" "}
+                  //             {new Date(
+                  //               m.summary.asOf
+                  //             ).toLocaleDateString()}
+                  //           </p>
+                  //         )}
+                  //       </div>
+                  //     </div>
+
+                  //     {m.summary ? (
+                  //       <div className="mt-3 space-y-1 text-xs">
+                  //         {m.summary.medianPrice && (
+                  //           <p>
+                  //             Avg home price{" "}
+                  //             <span className="font-semibold text-sky-300">
+                  //               $
+                  //               {Math.round(
+                  //                 m.summary.medianPrice
+                  //               ).toLocaleString()}
+                  //             </span>
+                  //           </p>
+                  //         )}
+                  //         {m.summary.medianRent && (
+                  //           <p className="text-slate-400">
+                  //             Est. rent $
+                  //             {Math.round(
+                  //               m.summary.medianRent
+                  //             ).toLocaleString()}
+                  //           </p>
+                  //         )}
+                  //         {m.summary.dom && (
+                  //           <p className="text-slate-400">
+                  //             Days on market {m.summary.dom}
+                  //           </p>
+                  //         )}
+                  //       </div>
+                  //     ) : (
+                  //       <p className="mt-3 text-xs text-slate-500">
+                  //         No snapshot yet.
+                  //       </p>
+                  //     )}
+                  //   </div>
+                  // </Link>
                 );
               })}
             </div>
