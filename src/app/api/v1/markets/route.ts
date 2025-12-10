@@ -44,12 +44,14 @@ export async function POST(req: Request) {
       city: city ?? undefined,
       state: state ?? undefined,
       scope: "city",
+      hidden: false,
     },
     create: {
       id: marketId,
       city,
       state,
       scope: "city",
+      hidden: false,
     },
   });
 
@@ -82,6 +84,7 @@ export async function POST(req: Request) {
 // List all markets with their latest snapshot (for cards)
 export async function GET() {
   const markets = await prisma.market.findMany({
+    where: { hidden: false },
     include: {
       snapshots: {
         orderBy: { asOf: "desc" },
