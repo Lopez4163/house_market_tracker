@@ -35,6 +35,8 @@ export default function DashboardPage() {
     })();
   }, []);
 
+  console.log("Markets:", markets);
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -101,6 +103,24 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleHide(id: string) {
+    try {
+      const res = await fetch("/api/v1/markets/hide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+  
+      if (!res.ok) return;
+  
+      // Remove from UI immediately
+      setMarkets((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -156,66 +176,9 @@ export default function DashboardPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {markets.map((m) => {
-                return (
-                  <MarketCard key={m.id} market={m} />
-                  // <Link
-                  //   key={m.id}
-                  //   href={`/markets/${encodeURIComponent(m.id)}`}
-                  // >
-
-                  //   <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 hover:border-sky-500/80 hover:bg-slate-900 transition cursor-pointer">
-                  //     <EmbedMap zipFromId={zipFromId} />
-                  //     <div className="flex justify-between gap-2">
-                  //       <div>
-                  //         <h3 className="font-semibold text-sm">
-                  //           {title}
-                  //         </h3>
-                  //         {m.summary?.asOf && (
-                  //           <p className="text-[10px] text-slate-500">
-                  //             Updated{" "}
-                  //             {new Date(
-                  //               m.summary.asOf
-                  //             ).toLocaleDateString()}
-                  //           </p>
-                  //         )}
-                  //       </div>
-                  //     </div>
-
-                  //     {m.summary ? (
-                  //       <div className="mt-3 space-y-1 text-xs">
-                  //         {m.summary.medianPrice && (
-                  //           <p>
-                  //             Avg home price{" "}
-                  //             <span className="font-semibold text-sky-300">
-                  //               $
-                  //               {Math.round(
-                  //                 m.summary.medianPrice
-                  //               ).toLocaleString()}
-                  //             </span>
-                  //           </p>
-                  //         )}
-                  //         {m.summary.medianRent && (
-                  //           <p className="text-slate-400">
-                  //             Est. rent $
-                  //             {Math.round(
-                  //               m.summary.medianRent
-                  //             ).toLocaleString()}
-                  //           </p>
-                  //         )}
-                  //         {m.summary.dom && (
-                  //           <p className="text-slate-400">
-                  //             Days on market {m.summary.dom}
-                  //           </p>
-                  //         )}
-                  //       </div>
-                  //     ) : (
-                  //       <p className="mt-3 text-xs text-slate-500">
-                  //         No snapshot yet.
-                  //       </p>
-                  //     )}
-                  //   </div>
-                  // </Link>
-                );
+                  return (
+                    <MarketCard key={m.id} market={m} onHide={() => (handleHide(m.id))} />               
+                  );
               })}
             </div>
           )}

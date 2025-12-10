@@ -12,6 +12,7 @@ export async function withRentCastBudget<T>(
 
   return prisma.$transaction(async (tx) => {
     // Ensure row exists for this provider/year/month
+    console.log("Checking API usage for RentCast", year, month);
     const row = await tx.apiUsage.upsert({
       where: {
         // This relies on @@unique([provider, year, month]) in schema.prisma
