@@ -43,7 +43,6 @@ export async function POST(req: Request) {
     update: {
       city: city ?? undefined,
       state: state ?? undefined,
-      // keep scope as "city" so it matches existing enum
       scope: "city",
     },
     create: {
@@ -116,6 +115,7 @@ export async function GET() {
       id: m.id,
       city: m.city,
       state: m.state,
+      hidden: m.hidden,
       summary,
     };
   });

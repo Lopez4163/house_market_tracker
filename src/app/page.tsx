@@ -15,6 +15,7 @@ export type MarketItem = {
   id: string;             // e.g. "zip:11368"
   city: string | null;    // e.g. "Corona"
   state: string | null;   // e.g. "NY"
+  hidden?: boolean;
   summary: MarketCardSummary | null;
 };
 
@@ -34,6 +35,8 @@ export default function DashboardPage() {
       setMarkets(data);
     })();
   }, []);
+
+  console.log("Markets:", markets);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -101,6 +104,24 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleHide(id: string) {
+    try {
+      const res = await fetch("/api/v1/markets/hide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+  
+      if (!res.ok) return;
+  
+      // Remove from UI immediately
+      setMarkets((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -157,7 +178,10 @@ export default function DashboardPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {markets.map((m) => {
                 return (
-                  <MarketCard key={m.id} market={m} />
+
+                  
+    
+                  <MarketCard key={m.id} market={m} onHide={() => (handleHide(m.id))} />
                   // <Link
                   //   key={m.id}
                   //   href={`/markets/${encodeURIComponent(m.id)}`}
