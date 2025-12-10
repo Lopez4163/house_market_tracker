@@ -40,7 +40,7 @@ export default function PriceHistoryChart({ data }: { data: Point[] }) {
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const span = maxPrice - minPrice;
-
+  //test
   // Compute dynamic padding
   let yMin: number;
   let yMax: number;
