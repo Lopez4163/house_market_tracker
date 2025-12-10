@@ -170,7 +170,7 @@ export default function MarketDetailClient({ marketId }: Props) {
         </div>
 
         <div className="flex items-center gap-4 justify-between sm:justify-end">
-          <div className="inline-flex rounded-full border border-slate-800 bg-slate-900/80 p-1 text-[11px] sm:text-xs">
+          {/* <div className="inline-flex rounded-full border border-slate-800 bg-slate-900/80 p-1 text-[11px] sm:text-xs">
             {TIMEFRAMES.map((tf) => (
               <button
                 key={tf.id}
@@ -184,7 +184,7 @@ export default function MarketDetailClient({ marketId }: Props) {
                 {tf.label}
               </button>
             ))}
-          </div>
+          </div> */}
 
           {data && (
             <p className="text-[11px] text-slate-400 whitespace-nowrap">
