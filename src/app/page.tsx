@@ -120,10 +120,10 @@ export default function DashboardPage() {
     }
   }
   
-
   return (
+    
     <div className="min-h-screen bg-slate-950 text-slate-50">
-      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-8">
         {/* Header */}
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>

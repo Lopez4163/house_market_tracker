@@ -76,7 +76,7 @@ export default function PriceHistoryChart({ data }: { data: Point[] }) {
   };
 
   return (
-    <div className="h-64 w-full">
+    <div className="h-56 w-full sm:h-64">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={formatted}>
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
