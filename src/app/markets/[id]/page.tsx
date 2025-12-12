@@ -51,7 +51,7 @@ export default async function MarketDetailPage({
         </header>
 
         {/* KPI + chart logic lives in client component */}
-        <MarketDetailClient marketId={market.id} />
+        <MarketDetailClient marketId={market.id} state={market.state} />
       </div>
     </div>
   );

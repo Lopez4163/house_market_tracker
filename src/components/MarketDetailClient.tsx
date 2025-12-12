@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
+import MortgageCalculator from "@/components/MortgageCalculator";
 import { EmbedMap } from "./ui/embedmap";
 
 type PropertyType = "sfh" | "condo" | "2to4";
@@ -22,6 +23,7 @@ const TIMEFRAMES: { id: Timeframe; label: string }[] = [
 ];
 
 type KpisShape = {
+  state: string | null;
   medianPrice: number | null;
   medianRent: number | null;
   ppsf: number | null;
@@ -72,9 +74,10 @@ type SnapshotResponse = SnapshotRow & {
 
 type Props = {
   marketId: string;
+  state: string;
 };
 
-export default function MarketDetailClient({ marketId }: Props) {
+export default function MarketDetailClient({ marketId, state }: Props) {
   const [type, setType] = useState<PropertyType>("sfh");
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [data, setData] = useState<SnapshotResponse | null>(null);
@@ -148,7 +151,14 @@ export default function MarketDetailClient({ marketId }: Props) {
     });
   }, [data, activeSeries, timeframe]);
 
-  return (
+  const medianPrice = activeKpis.medianPrice ?? null;
+  const medianRent = activeKpis.medianRent ?? null;
+
+  console.log('data', data);
+  console.log('activeKpis', activeKpis);
+  console.log('state', state);
+
+  return (  
     <div className="space-y-6">
       {/* Top controls: type + timeframe + last updated */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -277,6 +287,10 @@ export default function MarketDetailClient({ marketId }: Props) {
               </div>
             </div>
             <PriceHistoryChart data={filteredSeries as any[]} />
+            <MortgageCalculator
+              defaultPrice={medianPrice}
+              estimatedRent={medianRent}
+            />
           </section>
         </>
       )}
