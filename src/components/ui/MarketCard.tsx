@@ -34,6 +34,7 @@ export function MarketCard({ market, onHide }: MarketCardProps) {
                   text-xs font-bold
                   hover:bg-red-700
                   cursor-pointer
+                  z-10
                 "
               >
                 ×

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { MarketCard } from "@/components/ui/MarketCard";
 
 type MarketCardSummary = {
@@ -12,9 +11,9 @@ type MarketCardSummary = {
 };
 
 export type MarketItem = {
-  id: string;             // e.g. "zip:11368"
-  city: string | null;    // e.g. "Corona"
-  state: string | null;   // e.g. "NY"
+  id: string; // e.g. "zip:11368"
+  city: string | null; // e.g. "Corona"
+  state: string | null; // e.g. "NY"
   summary: MarketCardSummary | null;
 };
 
@@ -23,19 +22,23 @@ export default function DashboardPage() {
   const [markets, setMarkets] = useState<MarketItem[]>([]);
   const [loadingAdd, setLoadingAdd] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // initial fetch of existing markets
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/v1/markets", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = await res.json();
-      console.log("Fetched markets:", data);
-      setMarkets(data);
+      try {
+        const res = await fetch("/api/v1/markets", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to fetch markets");
+        const data = await res.json();
+        setMarkets(data);
+      } catch (e) {
+        console.error(e);
+        // optional: setError("Failed to load markets.");
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
-
-  console.log("Markets:", markets);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -76,7 +79,6 @@ export default function DashboardPage() {
       };
 
       setMarkets((prev) => {
-        // avoid duplicates: replace if exists
         const existingIndex = prev.findIndex((m) => m.id === market.id);
         const newItem: MarketItem = {
           id: market.id,
@@ -110,18 +112,20 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-  
+
       if (!res.ok) return;
-  
-      // Remove from UI immediately
+
       setMarkets((prev) => prev.filter((m) => m.id !== id));
     } catch (err) {
       console.error(err);
     }
   }
-  
+
+  const showSpinner = loading;
+  const showEmpty = !loading && markets.length === 0;
+  const showGrid = !loading && markets.length > 0;
+
   return (
-    
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-8">
         {/* Header */}
@@ -155,11 +159,7 @@ export default function DashboardPage() {
               {loadingAdd ? "Adding..." : "Add"}
             </button>
           </form>
-          {error && (
-            <p className="text-xs text-red-400">
-              {error}
-            </p>
-          )}
+          {error && <p className="text-xs text-red-400">{error}</p>}
         </section>
 
         {/* Cards */}
@@ -167,21 +167,56 @@ export default function DashboardPage() {
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
             Watchlist
           </h2>
-          {markets.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              No markets added yet. Start by adding something like{" "}
-              <span className="font-mono">18504</span> or{" "}
-              <span className="font-mono">11368</span>.
-            </p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {markets.map((m) => {
-                  return (
-                    <MarketCard key={m.id} market={m} onHide={() => (handleHide(m.id))} />               
-                  );
-              })}
-            </div>
-          )}
+
+          {/* Spinner (fades out) */}
+          <div
+            className={`transition-opacity duration-300 ${
+              showSpinner ? "opacity-100" : "opacity-0 pointer-events-none h-0"
+            }`}
+          >
+            {showSpinner && (
+              <div className="flex min-h-[50vh] items-center justify-center">
+                <div className="relative h-14 w-14">
+                  <div className="absolute inset-0 rounded-full bg-sky-400/20 blur-lg" />
+                  <div className="h-14 w-14 animate-spin rounded-full border-[3px] border-slate-700 border-t-sky-400 border-r-sky-300" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Empty state (fades in) */}
+          <div
+            className={`transition-all duration-500 ease-out ${
+              showEmpty ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none h-0 overflow-hidden"
+            }`}
+          >
+            {showEmpty && (
+              <p className="text-sm text-slate-500">
+                No markets added yet. Start by adding something like{" "}
+                <span className="font-mono">18504</span> or{" "}
+                <span className="font-mono">11368</span>.
+              </p>
+            )}
+          </div>
+
+          {/* Grid (fades in) */}
+          <div
+            className={`transition-all duration-500 ease-out ${
+              showGrid ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none h-0 overflow-hidden"
+            }`}
+          >
+            {showGrid && (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {markets.map((m) => (
+                  <MarketCard
+                    key={m.id}
+                    market={m}
+                    onHide={() => handleHide(m.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </div>
