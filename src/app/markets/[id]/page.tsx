@@ -39,6 +39,7 @@ export default async function MarketDetailPage({
 
   const cityLabel = `${market.city ?? "Unknown"}, ${market.state ?? "??"}`;
 
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -51,7 +52,7 @@ export default async function MarketDetailPage({
         </header>
 
         {/* KPI + chart logic lives in client component */}
-        <MarketDetailClient marketId={market.id} state={market.state} />
+        <MarketDetailClient marketId={market.id} />
       </div>
     </div>
   );

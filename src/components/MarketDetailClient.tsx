@@ -23,7 +23,6 @@ const TIMEFRAMES: { id: Timeframe; label: string }[] = [
 ];
 
 type KpisShape = {
-  state: string | null;
   medianPrice: number | null;
   medianRent: number | null;
   ppsf: number | null;
@@ -74,10 +73,9 @@ type SnapshotResponse = SnapshotRow & {
 
 type Props = {
   marketId: string;
-  state: string;
 };
 
-export default function MarketDetailClient({ marketId, state }: Props) {
+export default function MarketDetailClient({ marketId }: Props) {
   const [type, setType] = useState<PropertyType>("sfh");
   const [timeframe, setTimeframe] = useState<Timeframe>("1Y");
   const [data, setData] = useState<SnapshotResponse | null>(null);
@@ -153,10 +151,6 @@ export default function MarketDetailClient({ marketId, state }: Props) {
 
   const medianPrice = activeKpis.medianPrice ?? null;
   const medianRent = activeKpis.medianRent ?? null;
-
-  console.log('data', data);
-  console.log('activeKpis', activeKpis);
-  console.log('state', state);
 
   return (  
     <div className="space-y-6">
