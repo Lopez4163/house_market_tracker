@@ -114,6 +114,31 @@ export default function DashboardPage() {
     }
   }
 
+
+  type SortDirection = "lowToHigh" | "highToLow";
+  type SortField = "price" | "rent";
+  
+  const sortByPrice = (direction: SortDirection, field: SortField) => {
+    setMarkets((prev) =>
+      [...prev].sort((a, b) => {
+        const aVal =
+          field === "rent" ? a.summary?.medianRent : a.summary?.medianPrice;
+        const bVal =
+          field === "rent" ? b.summary?.medianRent : b.summary?.medianPrice;
+  
+        // Push missing values to the bottom
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+  
+        return direction === "lowToHigh" ? aVal - bVal : bVal - aVal;
+      })
+    );
+  };
+  
+  
+  
+
+
   const showSpinner = loading;
   const showEmpty = !loading && markets.length === 0;
   const showGrid = !loading && markets.length > 0;
@@ -219,6 +244,72 @@ export default function DashboardPage() {
                   </div>
                 )}
               </form>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={()=> sortByPrice('lowToHigh', 'price')}
+                  className="
+                    mt-3 w-full
+                    border border-white/15
+                    bg-white/5
+                    px-4 py-2.5
+                    text-xs uppercase tracking-wider text-white/70
+                    hover:bg-white/10 hover:border-white/25
+                    active:translate-y-[1px]
+                    transition
+                  "
+                >
+                  Sort by price · low → high
+                </button>
+                <button
+                  type="button"
+                  onClick={()=> sortByPrice('highToLow', 'price')}
+                  className="
+                    mt-3 w-full
+                    border border-white/15
+                    bg-white/5
+                    px-4 py-2.5
+                    text-xs uppercase tracking-wider text-white/70
+                    hover:bg-white/10 hover:border-white/25
+                    active:translate-y-[1px]
+                    transition
+                  "
+                >
+                  Sort by price · high → low
+                </button>
+                <button
+                  type="button"
+                  onClick={()=> sortByPrice('lowToHigh', 'rent')}
+                  className="
+                    mt-3 w-full
+                    border border-white/15
+                    bg-white/5
+                    px-4 py-2.5
+                    text-xs uppercase tracking-wider text-white/70
+                    hover:bg-white/10 hover:border-white/25
+                    active:translate-y-[1px]
+                    transition
+                  "
+                >
+                  Sort by rent · low → high
+                </button>
+                <button
+                  type="button"
+                  onClick={()=> sortByPrice('highToLow', 'rent')}
+                  className="
+                    mt-3 w-full
+                    border border-white/15
+                    bg-white/5
+                    px-4 py-2.5
+                    text-xs uppercase tracking-wider text-white/70
+                    hover:bg-white/10 hover:border-white/25
+                    active:translate-y-[1px]
+                    transition
+                  "
+                >
+                  Sort by rent · high → low
+                </button>
+              </div>
             </div>
           </div>
         </div>
