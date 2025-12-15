@@ -77,7 +77,7 @@ export default function MortgageCalculator({
         mPI = loan / n;
       } else {
         const pow = Math.pow(1 + r, n);
-        mPI = loan * (r * pow) / (pow - 1);
+        mPI = (loan * (r * pow)) / (pow - 1);
       }
     }
 
@@ -122,7 +122,7 @@ export default function MortgageCalculator({
       return {
         label: "Estimate",
         sublabel: "",
-        className: "border-slate-600 bg-slate-900/80 text-slate-100",
+        className: "border-white/20 bg-white/5 text-white/85",
       };
     }
 
@@ -132,7 +132,7 @@ export default function MortgageCalculator({
       return {
         label: "W",
         sublabel: "Well under rent",
-        className: "border-emerald-500 bg-emerald-500/15 text-emerald-300",
+        className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
       };
     }
 
@@ -140,45 +140,47 @@ export default function MortgageCalculator({
       return {
         label: "OK",
         sublabel: "Near rent",
-        className: "border-amber-500 bg-amber-500/15 text-amber-300",
+        className: "border-amber-500/40 bg-amber-500/10 text-amber-200",
       };
     }
 
     return {
       label: "L",
       sublabel: "Above rent",
-      className: "border-rose-500 bg-rose-500/15 text-rose-300",
+      className: "border-rose-500/40 bg-rose-500/10 text-rose-200",
     };
   }, [estimatedRent, totalMonthlyPayment]);
 
   return (
-    <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800/70 bg-gradient-to-b from-slate-900/70 to-slate-950/60 shadow-lg shadow-black/20">
+    <section className="mt-8 border border-white/15 bg-white/5">
       {/* Top bar */}
-      <div className="flex flex-col gap-4 border-b border-slate-800/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="flex flex-col gap-4 border-b border-white/15 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-800/80 bg-slate-950/50 px-3 py-1 text-xs text-slate-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+          <div className="inline-flex items-center gap-2 border border-white/15 bg-[#0B0B0F]/40 px-3 py-1 text-xs text-white/70">
+            <span className="h-1.5 w-1.5 bg-white/40" />
             Mortgage + PITI Estimator
           </div>
-          <h2 className="mt-2 truncate text-xl font-semibold text-slate-50">
+
+          <h2 className="mt-2 truncate text-xl font-semibold tracking-tight text-white">
             Mortgage Calculator
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+
+          <p className="mt-1 text-sm text-white/60">
             Model monthly payment and compare against market rent.
           </p>
         </div>
-  
+
         {/* PITI badge */}
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end">
-            <span className="text-xs uppercase tracking-wide text-slate-500">
+            <span className="text-xs uppercase tracking-[0.3em] text-white/45">
               Estimated Monthly
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-white/60">
               {estimatedRent && estimatedRent > 0 ? (
                 <>
                   Rent est{" "}
-                  <span className="font-medium text-slate-200">
+                  <span className="font-medium text-white/85">
                     {formatCurrencyExact(estimatedRent)}
                   </span>
                 </>
@@ -187,159 +189,158 @@ export default function MortgageCalculator({
               )}
             </span>
           </div>
-  
+
           <div
             className={`relative flex h-24 w-24 items-center justify-center rounded-full border ${affordability.className}`}
           >
-            {/* subtle glow ring */}
             <div className="pointer-events-none absolute inset-0 rounded-full ring-8 ring-white/5" />
             <div className="text-center">
-              <div className="text-[0.65rem] uppercase tracking-wide text-slate-200/70">
+              <div className="text-[0.65rem] uppercase tracking-[0.3em] text-white/55">
                 PITI
               </div>
-              <div className="mt-0.5 text-base font-semibold text-slate-50">
+              <div className="mt-0.5 text-base font-semibold text-white">
                 {formatCurrencyExact(totalMonthlyPayment || 0)}
               </div>
-              <div className="mt-0.5 text-[0.65rem] uppercase tracking-wide text-slate-200/60">
+              <div className="mt-0.5 text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
                 {affordability.sublabel || "Adjust inputs"}
               </div>
             </div>
           </div>
         </div>
       </div>
-  
+
       {/* Body */}
       <div className="grid gap-6 px-4 py-5 sm:px-6 lg:grid-cols-2">
         {/* LEFT: Inputs */}
         <div className="space-y-5">
           <div className="grid gap-4">
             {/* Purchase Price */}
-            <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
-              <label className="flex items-center justify-between text-xs font-medium text-slate-300">
+            <div className="border border-white/15 bg-[#0B0B0F]/40 p-4">
+              <label className="flex items-center justify-between text-xs font-medium text-white/70">
                 <span>Purchase Price</span>
-                <span className="text-[0.7rem] text-slate-500">USD</span>
+                <span className="text-[0.7rem] text-white/45">USD</span>
               </label>
               <input
                 type="text"
                 inputMode="numeric"
-                className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                className="mt-2 w-full border border-white/15 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/40"
                 value={purchasePrice}
                 onChange={bind(setPurchasePrice, sanitizeNumberInput)}
                 placeholder="250000"
               />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-white/45">
                 Used to compute taxes, loan amount, and payment.
               </p>
             </div>
-  
+
             {/* DP + Rate */}
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
-                <label className="block text-xs font-medium text-slate-300">
+              <div className="border border-white/15 bg-[#0B0B0F]/40 p-4">
+                <label className="block text-xs font-medium text-white/70">
                   Down Payment %
                 </label>
                 <input
                   type="text"
                   inputMode="decimal"
-                  className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className="mt-2 w-full border border-white/15 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/40"
                   value={downPaymentPercent}
                   onChange={bind(setDownPaymentPercent, sanitizeNumberInput)}
                   placeholder="5"
                 />
-                <p className="mt-2 text-xs text-slate-500">VA/FHA style: 0–5%+</p>
+                <p className="mt-2 text-xs text-white/45">VA/FHA style: 0–5%+</p>
               </div>
-  
-              <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
-                <label className="block text-xs font-medium text-slate-300">
+
+              <div className="border border-white/15 bg-[#0B0B0F]/40 p-4">
+                <label className="block text-xs font-medium text-white/70">
                   Interest Rate (APR %)
                 </label>
                 <input
                   type="text"
                   inputMode="decimal"
-                  className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className="mt-2 w-full border border-white/15 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/40"
                   value={interestRate}
                   onChange={bind(setInterestRate, sanitizeNumberInput)}
                   placeholder="6.5"
                 />
-                <p className="mt-2 text-xs text-slate-500">Try 6.0–7.5%</p>
+                <p className="mt-2 text-xs text-white/45">Try 6.0–7.5%</p>
               </div>
             </div>
-  
+
             {/* Term */}
-            <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
-              <label className="block text-xs font-medium text-slate-300">
+            <div className="border border-white/15 bg-[#0B0B0F]/40 p-4">
+              <label className="block text-xs font-medium text-white/70">
                 Term (years)
               </label>
               <input
                 type="text"
                 inputMode="numeric"
-                className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                className="mt-2 w-full border border-white/15 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/40"
                 value={termYears}
                 onChange={bind(setTermYears, sanitizeNumberInput)}
                 placeholder="30"
               />
-              <p className="mt-2 text-xs text-slate-500">Common: 15 or 30</p>
+              <p className="mt-2 text-xs text-white/45">Common: 15 or 30</p>
             </div>
-  
+
             {/* Taxes + Insurance */}
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
-                <label className="block text-xs font-medium text-slate-300">
+              <div className="border border-white/15 bg-[#0B0B0F]/40 p-4">
+                <label className="block text-xs font-medium text-white/70">
                   Taxes / year
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
-                  className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className="mt-2 w-full border border-white/15 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/40"
                   value={taxesPerYear}
                   onChange={bind(setTaxesPerYear, sanitizeNumberInput)}
                   placeholder="3600"
                 />
-                <p className="mt-2 text-xs text-slate-500">Property tax estimate</p>
+                <p className="mt-2 text-xs text-white/45">Property tax estimate</p>
               </div>
-  
-              <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
-                <label className="block text-xs font-medium text-slate-300">
+
+              <div className="border border-white/15 bg-[#0B0B0F]/40 p-4">
+                <label className="block text-xs font-medium text-white/70">
                   Insurance / year
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
-                  className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className="mt-2 w-full border border-white/15 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/40"
                   value={insurancePerYear}
                   onChange={bind(setInsurancePerYear, sanitizeNumberInput)}
                   placeholder="2000"
                 />
-                <p className="mt-2 text-xs text-slate-500">Homeowners estimate</p>
+                <p className="mt-2 text-xs text-white/45">Homeowners estimate</p>
               </div>
             </div>
-  
+
             {/* HOA */}
-            <div className="rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
-              <label className="block text-xs font-medium text-slate-300">
+            <div className="border border-white/15 bg-[#0B0B0F]/40 p-4">
+              <label className="block text-xs font-medium text-white/70">
                 HOA / month
               </label>
               <input
                 type="text"
                 inputMode="numeric"
-                className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                className="mt-2 w-full border border-white/15 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/40"
                 value={hoaPerMonth}
                 onChange={bind(setHoaPerMonth, sanitizeNumberInput)}
                 placeholder="0"
               />
-              <p className="mt-2 text-xs text-slate-500">Often $0 for SFH</p>
+              <p className="mt-2 text-xs text-white/45">Often $0 for SFH</p>
             </div>
           </div>
-  
+
           {/* Footer actions */}
-          <div className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-950/30 px-4 py-3">
-            <p className="text-xs text-slate-500">
+          <div className="flex items-center justify-between border border-white/15 bg-[#0B0B0F]/30 px-4 py-3">
+            <p className="text-xs text-white/45">
               Estimates only — lender/area specifics vary.
             </p>
-  
+
             <button
               type="button"
-              className="rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="border border-white/20 bg-[#0B0B0F]/40 px-3 py-1.5 text-xs font-medium text-white/70 hover:border-white/40 hover:text-white transition"
               onClick={() => {
                 setPurchasePrice(defaultPrice != null ? String(Math.round(defaultPrice)) : "");
                 setDownPaymentPercent("5");
@@ -354,43 +355,46 @@ export default function MortgageCalculator({
             </button>
           </div>
         </div>
-  
+
         {/* RIGHT: Breakdown */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-5">
+          <div className="border border-white/15 bg-[#0B0B0F]/35 p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-50">Payment Breakdown</h3>
-              <span className="rounded-full border border-slate-800 bg-slate-950/70 px-2 py-1 text-[0.7rem] text-slate-400">
+              <h3 className="text-sm font-semibold text-white">Payment Breakdown</h3>
+              <span className="border border-white/15 bg-[#0B0B0F]/40 px-2 py-1 text-[0.7rem] text-white/55">
                 Monthly
               </span>
             </div>
-  
+
             <div className="mt-4 space-y-2 text-sm">
               <Row label="Loan amount" value={formatCurrency(loanAmount)} />
-              <Row label="Principal & Interest" value={formatCurrencyExact(monthlyPrincipalInterest)} />
+              <Row
+                label="Principal & Interest"
+                value={formatCurrencyExact(monthlyPrincipalInterest)}
+              />
               <Row label="Taxes" value={formatCurrencyExact(monthlyTaxes)} />
               <Row label="Insurance" value={formatCurrencyExact(monthlyInsurance)} />
               <Row label="HOA" value={formatCurrencyExact(num(hoaPerMonth))} />
             </div>
-  
-            <div className="mt-5 rounded-xl border border-slate-800/80 bg-slate-950/70 p-4">
-              <div className="text-xs uppercase tracking-wide text-slate-500">
+
+            <div className="mt-5 border border-white/15 bg-[#0B0B0F]/40 p-4">
+              <div className="text-xs uppercase tracking-[0.3em] text-white/45">
                 Total Estimated Payment
               </div>
-              <div className="mt-1 text-2xl font-semibold text-slate-50">
+              <div className="mt-1 text-2xl font-semibold text-white">
                 {formatCurrencyExact(totalMonthlyPayment)}
               </div>
-              <div className="mt-2 text-xs text-slate-500">
+              <div className="mt-2 text-xs text-white/45">
                 Includes P&amp;I + taxes + insurance + HOA.
               </div>
             </div>
           </div>
-  
-          <div className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-5">
-            <h3 className="text-sm font-semibold text-slate-50">Quick Read</h3>
-            <p className="mt-2 text-sm text-slate-400">
-              The circle compares your <span className="text-slate-200">PITI</span> to the market’s{" "}
-              <span className="text-slate-200">median rent</span>. Green means your payment is comfortably
+
+          <div className="border border-white/15 bg-[#0B0B0F]/25 p-5">
+            <h3 className="text-sm font-semibold text-white">Quick Read</h3>
+            <p className="mt-2 text-sm text-white/60">
+              The circle compares your <span className="text-white/85">PITI</span> to the market’s{" "}
+              <span className="text-white/85">median rent</span>. Green means your payment is comfortably
               under rent, amber is close, and red is above.
             </p>
           </div>
@@ -398,14 +402,14 @@ export default function MortgageCalculator({
       </div>
     </section>
   );
-  
+
   // Small helper component inside the same file (below MortgageCalculator)
   function Row({ label, value }: { label: string; value: string }) {
     return (
       <div className="flex items-center justify-between gap-4">
-        <span className="text-slate-400">{label}</span>
-        <span className="font-medium text-slate-100">{value}</span>
+        <span className="text-white/60">{label}</span>
+        <span className="font-medium text-white/85">{value}</span>
       </div>
     );
   }
-}  
+}

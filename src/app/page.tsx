@@ -11,9 +11,9 @@ type MarketCardSummary = {
 };
 
 export type MarketItem = {
-  id: string; // e.g. "zip:11368"
-  city: string | null; // e.g. "Corona"
-  state: string | null; // e.g. "NY"
+  id: string;
+  city: string | null;
+  state: string | null;
   summary: MarketCardSummary | null;
 };
 
@@ -33,7 +33,6 @@ export default function DashboardPage() {
         setMarkets(data);
       } catch (e) {
         console.error(e);
-        // optional: setError("Failed to load markets.");
       } finally {
         setLoading(false);
       }
@@ -45,7 +44,6 @@ export default function DashboardPage() {
     setError(null);
 
     const trimmed = zip.trim();
-
     if (!/^\d{5}$/.test(trimmed)) {
       setError("Enter a valid 5-digit ZIP code.");
       return;
@@ -56,10 +54,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/v1/markets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          zip: trimmed,
-          propertyType: "sfh",
-        }),
+        body: JSON.stringify({ zip: trimmed, propertyType: "sfh" }),
       });
 
       if (!res.ok) {
@@ -112,9 +107,7 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-
       if (!res.ok) return;
-
       setMarkets((prev) => prev.filter((m) => m.id !== id));
     } catch (err) {
       console.error(err);
@@ -126,98 +119,157 @@ export default function DashboardPage() {
   const showGrid = !loading && markets.length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-8">
-        {/* Header */}
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">House Market Watch</h1>
-            <p className="text-sm text-slate-400">
-              Add ZIP codes to your watchlist. Each card is one local market.
-            </p>
+    <div className="min-h-screen bg-[#0B0B0F] text-white">
+      {/* Top rule */}
+      <div className="border-b border-white/15">
+        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+          <div className="text-xs tracking-[0.35em] uppercase text-white/70">
+            HOUSE MARKET WATCH
           </div>
-        </header>
+          <div className="text-xs text-white/60">
+            {markets.length} tracked
+          </div>
+        </div>
+      </div>
 
-        {/* Add ZIP form */}
-        <section className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <form
-            onSubmit={handleAdd}
-            className="flex flex-col gap-3 sm:flex-row sm:items-center"
-          >
-            <input
-              value={zip}
-              onChange={(e) => setZip(e.target.value)}
-              placeholder="ZIP (e.g. 11368)"
-              className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
-            />
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
+        {/* Hero grid */}
+        <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
+          <div className="lg:col-span-7">
+            <h1 className="text-[42px] leading-[0.95] sm:text-[72px] font-semibold tracking-tight">
+              Track markets.
+              <br />
+              Not noise.
+            </h1>
 
-            <button
-              type="submit"
-              disabled={loadingAdd}
-              className="rounded-xl border border-sky-500 bg-sky-500/10 px-4 py-2 text-sm font-medium hover:bg-sky-500/20 disabled:opacity-60"
-            >
-              {loadingAdd ? "Adding..." : "Add"}
-            </button>
-          </form>
-          {error && <p className="text-xs text-red-400">{error}</p>}
-        </section>
+            <p className="mt-5 max-w-xl text-sm sm:text-base text-white/70 leading-relaxed">
+              Add ZIP codes. Get snapshot data for median price, rent, and days on
+              market. Fast, quota-friendly, and built for quick decisions.
+            </p>
 
-        {/* Cards */}
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
-            Watchlist
-          </h2>
+            {/* Feature list */}
+            <div className="mt-7 grid grid-cols-2 gap-3 max-w-xl">
+              {[
+                ["Snapshot caching", "No repeated calls."],
+                ["ZIP watchlist", "One card per market."],
+                ["2–4 ready", "Built for multi-family."],
+                ["Clean KPIs", "Price · Rent · DOM."],
+              ].map(([title, sub]) => (
+                <div
+                  key={title}
+                  className="border border-white/15 bg-white/5 p-3"
+                >
+                  <div className="text-xs font-medium">{title}</div>
+                  <div className="mt-1 text-[11px] text-white/60">{sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-          {/* Spinner (fades out) */}
-          <div
-            className={`transition-opacity duration-300 ${
-              showSpinner ? "opacity-100" : "opacity-0 pointer-events-none h-0"
-            }`}
-          >
-            {showSpinner && (
-              <div className="flex min-h-[50vh] items-center justify-center">
-                <div className="relative h-14 w-14">
-                  <div className="absolute inset-0 rounded-full bg-sky-400/20 blur-lg" />
-                  <div className="h-14 w-14 animate-spin rounded-full border-[3px] border-slate-700 border-t-sky-400 border-r-sky-300" />
+          {/* Add ZIP block */}
+          <div className="lg:col-span-5">
+            <div className="border border-white/15 bg-white/5 p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-xs tracking-[0.3em] uppercase text-white/60">
+                  Add a market
+                </div>
+                <div className="text-[11px] text-white/55">
+                  Try: <span className="font-mono">18504</span> ·{" "}
+                  <span className="font-mono">11368</span>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Empty state (fades in) */}
-          <div
-            className={`transition-all duration-500 ease-out ${
-              showEmpty ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none h-0 overflow-hidden"
-            }`}
-          >
-            {showEmpty && (
-              <p className="text-sm text-slate-500">
-                No markets added yet. Start by adding something like{" "}
-                <span className="font-mono">18504</span> or{" "}
-                <span className="font-mono">11368</span>.
-              </p>
-            )}
-          </div>
+              <form onSubmit={handleAdd} className="mt-4 space-y-3">
+                <input
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                  placeholder="ZIP (5 digits)"
+                  inputMode="numeric"
+                  className="
+                    w-full bg-transparent
+                    border border-white/15
+                    px-4 py-3
+                    text-sm
+                    outline-none
+                    placeholder:text-white/35
+                    focus:border-white/40
+                  "
+                />
 
-          {/* Grid (fades in) */}
-          <div
-            className={`transition-all duration-500 ease-out ${
-              showGrid ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none h-0 overflow-hidden"
-            }`}
-          >
-            {showGrid && (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {markets.map((m) => (
-                  <MarketCard
-                    key={m.id}
-                    market={m}
-                    onHide={() => handleHide(m.id)}
-                  />
-                ))}
+                <button
+                  type="submit"
+                  disabled={loadingAdd}
+                  className="
+                    w-full
+                    bg-white text-black
+                    px-4 py-3
+                    text-sm font-medium
+                    hover:bg-white/90
+                    active:translate-y-[1px]
+                    disabled:opacity-60 disabled:cursor-not-allowed
+                    transition
+                  "
+                >
+                  {loadingAdd ? "Adding…" : "Add to watchlist"}
+                </button>
+
+                {error && (
+                  <div className="border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                    {error}
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        </div>
+
+        {/* Watchlist */}
+        <div className="mt-12">
+          <div className="flex items-end justify-between border-b border-white/15 pb-3">
+            <div>
+              <div className="text-xs tracking-[0.3em] uppercase text-white/60">
+                Watchlist
               </div>
-            )}
+              <div className="mt-1 text-sm text-white/75">
+                Your tracked ZIP markets
+              </div>
+            </div>
           </div>
-        </section>
+
+          {/* Loading */}
+          {showSpinner && (
+            <div className="py-16 text-center text-sm text-white/60">
+              Loading…
+            </div>
+          )}
+
+          {/* Empty */}
+          {!showSpinner && showEmpty && (
+            <div className="mt-6 border border-white/15 bg-white/5 p-8">
+              <div className="text-sm text-white/80">No markets yet.</div>
+              <div className="mt-1 text-xs text-white/60">
+                Add a ZIP above to start tracking.
+              </div>
+            </div>
+          )}
+
+          {/* Grid */}
+          {!showSpinner && showGrid && (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {markets.map((m) => (
+                <MarketCard
+                  key={m.id}
+                  market={m}
+                  onHide={() => handleHide(m.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-14 text-center text-[11px] text-white/45">
+          Snapshot-driven · ZIP markets · Built for speed
+        </div>
       </div>
     </div>
   );

@@ -40,7 +40,6 @@ type PerTypePayload = {
   series: SeriesPoint[];
 };
 
-// 👇 This is the shape of the snapshot row in the DB
 type SnapshotRow = {
   id: number;
   marketId: string;
@@ -57,14 +56,12 @@ type SnapshotRow = {
   } | null;
 };
 
-// 👇 What the API returns from /api/v1/summary
 type SummaryApiResponse = {
   snapshot: SnapshotRow;
   stale?: boolean;
   error?: string;
 };
 
-// 👇 What we actually keep in state (snapshot + flags)
 type SnapshotResponse = SnapshotRow & {
   stale?: boolean;
   error?: string;
@@ -96,7 +93,6 @@ export default function MarketDetailClient({ marketId }: Props) {
 
         const json = (await res.json()) as SummaryApiResponse;
 
-        // Merge stale/error flags into the snapshot row
         setData({
           ...json.snapshot,
           stale: json.stale,
@@ -120,7 +116,6 @@ export default function MarketDetailClient({ marketId }: Props) {
   const perType = data?.sourceMeta?.perType;
   const typePayload = perType ? perType[type] : undefined;
 
-  // Active KPIs/series depend on selected type if per-type data exists
   const activeKpis: KpisShape = (typePayload?.kpis ?? baseKpis) as KpisShape;
   const activeSeries: SeriesPoint[] = (typePayload?.series ??
     baseSeries) as SeriesPoint[];
@@ -153,35 +148,39 @@ export default function MarketDetailClient({ marketId }: Props) {
 
   return (
     <div className="relative min-h-[40vh] space-y-6">
-      {/* Premium overlay (fades out) */}
+      {/* Overlay (same logic/structure, dashboard look) */}
       <div
         className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center transition-opacity duration-300 ${
           showInitialOverlay ? "opacity-100" : "opacity-0"
         }`}
         aria-hidden={!showInitialOverlay}
       >
-        {/* soft glass/shimmer backdrop */}
-        <div className="absolute inset-0 bg-slate-950/55" />
-        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-slate-800/30 via-slate-900/20 to-slate-800/30" />
+        <div className="absolute inset-0 bg-[#0B0B0F]/85" />
+        <div className="absolute inset-0 bg-white/5" />
 
-        {/* premium spinner */}
-        <div className="relative h-12 w-12">
-          <div className="absolute inset-0 rounded-full bg-sky-400/20 blur-lg" />
-          <div className="h-12 w-12 animate-spin rounded-full border-[3px] border-slate-700 border-t-sky-400 border-r-sky-300" />
+        <div className="relative flex items-center gap-3 border border-white/15 bg-white/5 px-4 py-3">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+          <div className="leading-tight">
+            <p className="text-sm font-medium text-white">Loading snapshot</p>
+            <p className="text-[11px] text-white/55">
+              Pulling last cached market data
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Top controls */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="inline-flex rounded-full border border-slate-800 bg-slate-900/80 p-1">
+        {/* TYPES */}
+        <div className="inline-flex items-center gap-1 border border-white/15 bg-white/5 p-1">
           {TYPES.map((t) => (
             <button
               key={t.id}
               onClick={() => setType(t.id)}
-              className={`px-4 py-1.5 text-xs sm:text-sm rounded-full transition ${
+              className={`px-3.5 py-1.5 text-[11px] sm:text-xs font-medium transition ${
                 type === t.id
-                  ? "bg-slate-100 text-slate-900"
-                  : "text-slate-300 hover:bg-slate-800"
+                  ? "bg-white text-black"
+                  : "text-white/60 hover:text-white hover:bg-white/10"
               }`}
             >
               {t.label}
@@ -190,15 +189,16 @@ export default function MarketDetailClient({ marketId }: Props) {
         </div>
 
         <div className="flex items-center gap-4 justify-between sm:justify-end">
-          <div className="inline-flex rounded-full border border-slate-800 bg-slate-900/80 p-1 text-[11px] sm:text-xs">
+          {/* TIMEFRAMES */}
+          <div className="inline-flex items-center gap-1 border border-white/15 bg-white/5 p-1 text-[11px] sm:text-xs">
             {TIMEFRAMES.map((tf) => (
               <button
                 key={tf.id}
                 onClick={() => setTimeframe(tf.id)}
-                className={`px-3 py-1 rounded-full transition ${
+                className={`px-3 py-1.5 font-medium transition ${
                   timeframe === tf.id
-                    ? "bg-slate-100 text-slate-900"
-                    : "text-slate-300 hover:bg-slate-800"
+                    ? "bg-white text-black"
+                    : "text-white/60 hover:text-white hover:bg-white/10"
                 }`}
               >
                 {tf.label}
@@ -207,9 +207,11 @@ export default function MarketDetailClient({ marketId }: Props) {
           </div>
 
           {data && (
-            <p className="text-[11px] text-slate-400 whitespace-nowrap">
+            <p className="text-[11px] text-white/55 whitespace-nowrap">
               Last updated {new Date(data.asOf).toLocaleString()}
-              {data.stale && " · using last known data"}
+              {data.stale && (
+                <span className="text-white/45"> · using last known data</span>
+              )}
             </p>
           )}
         </div>
@@ -225,81 +227,76 @@ export default function MarketDetailClient({ marketId }: Props) {
       >
         {data && (
           <>
-            {/* KPI Cards */}
+            {/* KPI panels */}
             <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">
+              <div className="border border-white/15 bg-white/5 p-4 transition hover:border-white/30">
+                <p className="text-[11px] text-white/60 uppercase tracking-[0.3em]">
                   Avg Home Price
                 </p>
-                <p className="mt-2 text-xl font-semibold">
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
                   {activeKpis.medianPrice != null
                     ? `$${Math.round(activeKpis.medianPrice).toLocaleString()}`
                     : "—"}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">
+              <div className="border border-white/15 bg-white/5 p-4 transition hover:border-white/30">
+                <p className="text-[11px] text-white/60 uppercase tracking-[0.3em]">
                   Est. Monthly Rent
                 </p>
-                <p className="mt-2 text-xl font-semibold">
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
                   {activeKpis.medianRent != null
                     ? `$${Math.round(activeKpis.medianRent).toLocaleString()}`
                     : "—"}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">
+              <div className="border border-white/15 bg-white/5 p-4 transition hover:border-white/30">
+                <p className="text-[11px] text-white/60 uppercase tracking-[0.3em]">
                   Price / Sq Ft
                 </p>
-                <p className="mt-2 text-xl font-semibold">
-                  {activeKpis.ppsf != null
-                    ? `$${activeKpis.ppsf.toFixed(0)}`
-                    : "—"}
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                  {activeKpis.ppsf != null ? `$${activeKpis.ppsf.toFixed(0)}` : "—"}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">
+              <div className="border border-white/15 bg-white/5 p-4 transition hover:border-white/30">
+                <p className="text-[11px] text-white/60 uppercase tracking-[0.3em]">
                   Days on Market
                 </p>
-                <p className="mt-2 text-xl font-semibold">
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
                   {activeKpis.dom != null ? activeKpis.dom : "—"}
                 </p>
               </div>
             </section>
 
-            {/* Price Series */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            {/* Chart + calculator block */}
+            <section className="border border-white/15 bg-white/5 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-sm text-white/75">
                     Price trend (median sale price over time)
                   </p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
+                  <p className="text-[11px] text-white/55 mt-0.5">
                     Type:{" "}
-                    <span className="font-medium uppercase">
-                      {type === "sfh"
-                        ? "SFH"
-                        : type === "condo"
-                        ? "Condo"
-                        : "2–4 Units"}
+                    <span className="font-medium uppercase text-white/80">
+                      {type === "sfh" ? "SFH" : type === "condo" ? "Condo" : "2–4 Units"}
                     </span>{" "}
                     · Range:{" "}
-                    <span className="font-medium">
+                    <span className="font-medium text-white/80">
                       {timeframe === "MAX" ? "Full history" : timeframe}
                     </span>
                   </p>
                 </div>
               </div>
 
-              <PriceHistoryChart data={filteredSeries as any[]} />
+              <div className="border border-white/15 bg-[#0B0B0F]/40 p-3">
+                <PriceHistoryChart data={filteredSeries as any[]} />
+              </div>
 
-              <MortgageCalculator
-                defaultPrice={medianPrice}
-                estimatedRent={medianRent}
-              />
+              <div className="mt-4 border border-white/15 bg-[#0B0B0F]/40 p-3">
+                <MortgageCalculator defaultPrice={medianPrice} estimatedRent={medianRent} />
+              </div>
             </section>
           </>
         )}

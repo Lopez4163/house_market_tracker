@@ -18,7 +18,7 @@ type Point = {
 export default function PriceHistoryChart({ data }: { data: Point[] }) {
   if (!data || data.length === 0) {
     return (
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-white/55">
         No price history available for this market yet.
       </p>
     );
@@ -31,7 +31,7 @@ export default function PriceHistoryChart({ data }: { data: Point[] }) {
 
   if (prices.length === 0) {
     return (
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-white/55">
         No valid price data available for this market yet.
       </p>
     );
@@ -79,33 +79,43 @@ export default function PriceHistoryChart({ data }: { data: Point[] }) {
     <div className="h-56 w-full sm:h-64">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={formatted}>
-          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+          <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
+
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: "#9ca3af" }}
+            tick={{ fontSize: 10, fill: "rgba(255,255,255,0.45)" }}
             tickMargin={8}
+            axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+            tickLine={{ stroke: "rgba(255,255,255,0.12)" }}
           />
+
           <YAxis
-            tick={{ fontSize: 10, fill: "#9ca3af" }}
+            tick={{ fontSize: 10, fill: "rgba(255,255,255,0.45)" }}
             tickFormatter={formatMoneyTick}
             domain={[yMin, yMax]}
+            axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+            tickLine={{ stroke: "rgba(255,255,255,0.12)" }}
           />
+
           <Tooltip
-            formatter={(value: any) =>
-              `$${Number(value).toLocaleString()}`
-            }
+            formatter={(value: any) => `$${Number(value).toLocaleString()}`}
             labelFormatter={(label) => label}
             contentStyle={{
-              backgroundColor: "#020617",
-              border: "1px solid #1f2937",
-              borderRadius: 8,
+              backgroundColor: "#0B0B0F",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 0,
               fontSize: 12,
+              color: "rgba(255,255,255,0.85)",
             }}
+            itemStyle={{ color: "rgba(255,255,255,0.85)" }}
+            labelStyle={{ color: "rgba(255,255,255,0.55)" }}
+            cursor={{ stroke: "rgba(255,255,255,0.12)" }}
           />
+
           <Line
             type="monotone"
             dataKey="medianPrice"
-            stroke="#38bdf8"
+            stroke="rgba(255,255,255,0.85)"
             strokeWidth={2}
             dot={false}
           />

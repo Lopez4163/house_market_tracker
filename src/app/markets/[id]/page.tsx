@@ -41,19 +41,26 @@ export default async function MarketDetailPage({
 
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
-        <header className="space-y-1">
-          <h1 className="text-3xl font-bold">{cityLabel}</h1>
-          <p className="text-xs text-slate-50">
-            Market ID: <code>{market.id}</code>
+    <div className="min-h-screen bg-[#0B0B0F] text-white">
+      <div className="max-w-5xl mx-auto px-4 py-10 sm:py-14 space-y-8">
+        <header className="space-y-2">
+          <div className="text-xs tracking-[0.3em] uppercase text-white/60">
+            Market
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+            {cityLabel}
+          </h1>
+          <p className="text-[11px] text-white/55">
+            Market ID: <code className="font-mono text-white/80">{market.id}</code>
           </p>
-            <EmbedMap zipCode={id}/>
+  
+          <div className="border border-white/15 bg-white/5 p-3">
+            <EmbedMap zipCode={id} />
+          </div>
         </header>
-
-        {/* KPI + chart logic lives in client component */}
+  
         <MarketDetailClient marketId={market.id} />
       </div>
     </div>
   );
-}
+}  

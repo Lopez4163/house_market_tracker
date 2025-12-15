@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { EmbedMap } from "@/components/ui/embedmap";
-import type { MarketItem } from "@/app/page"; // or move types to a shared /types file
+import type { MarketItem } from "@/app/page";
 
 type MarketCardProps = {
   market: MarketItem;
@@ -19,69 +19,95 @@ export function MarketCard({ market, onHide }: MarketCardProps) {
       ? `${market.city}, ${market.state} ${zipCode}`
       : `ZIP ${zipCode}`;
 
-  return (    
-      <div className=" relative group rounded-2xl border border-slate-800 bg-slate-900/60 p-4 hover:border-sky-500/80 hover:bg-slate-900 transition cursor-pointer">
-            {onHide && (
-              <button
-                onClick={onHide}
-                className="
-                  absolute top-2 right-2
-                  opacity-0 group-hover:opacity-100
-                  transition-opacity
-                  bg-red-600 text-white
-                  w-6 h-6 rounded-full
-                  flex items-center justify-center
-                  text-xs font-bold
-                  hover:bg-red-700
-                  cursor-pointer
-                  z-10
-                "
-              >
-                ×
-              </button>
-        )}
-      <Link href={`/markets/${encodeURIComponent(market.id)}`}>
+  return (
+    <div
+      className="
+        relative group
+        border border-white/15
+        bg-white/5
+        p-4
+        transition
+        hover:-translate-y-[1px]
+        hover:border-white/30
+      "
+    >
+      {onHide && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onHide();
+          }}
+          aria-label="Hide card"
+          className="
+            absolute top-2 right-2 z-10
+            flex h-6 w-6 items-center justify-center
+            border border-white/20
+            bg-[#0B0B0F]
+            text-white/50
+            opacity-0 group-hover:opacity-100
+            transition
+            hover:text-white hover:border-white/40
+            focus-visible:opacity-100
+          "
+        >
+          <span className="text-sm leading-none -mt-[1px]">×</span>
+        </button>
+      )}
 
-        <EmbedMap zipCode={zipCode} iframeClassName={"pointer-events-none"} />
-
-        <div className="flex justify-between gap-2 mt-3">
-          <div>
-            <h3 className="font-semibold text-sm">{title}</h3>
-            {market.summary?.asOf && (
-              <p className="text-[10px] text-slate-500">
-                Updated{" "}
-                {new Date(market.summary.asOf).toLocaleDateString()}
-              </p>
-            )}
-          </div>
+      <Link href={`/markets/${encodeURIComponent(market.id)}`} className="block">
+        {/* Map */}
+        <div className="relative overflow-hidden border border-white/15 bg-[#0B0B0F]">
+          <EmbedMap zipCode={zipCode} iframeClassName="pointer-events-none" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#0B0B0F] to-transparent" />
         </div>
 
+        {/* Title */}
+        <div className="mt-3">
+          <h3 className="text-sm font-medium text-white">
+            {title}
+          </h3>
+          {market.summary?.asOf && (
+            <p className="mt-0.5 text-[11px] text-white/55">
+              Updated {new Date(market.summary.asOf).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+
+        {/* KPIs */}
         {market.summary ? (
           <div className="mt-3 space-y-1 text-xs">
             {market.summary.medianPrice && (
-              <p>
-                Avg home price{" "}
-                <span className="font-semibold text-sky-300">
+              <p className="text-white/70">
+                Median price{" "}
+                <span className="font-medium text-white">
                   ${Math.round(market.summary.medianPrice).toLocaleString()}
                 </span>
               </p>
             )}
 
             {market.summary.medianRent && (
-              <p className="text-slate-400">
-                Est. rent $
-                {Math.round(market.summary.medianRent).toLocaleString()}
+              <p className="text-white/65">
+                Est. rent{" "}
+                <span className="text-white/85">
+                  ${Math.round(market.summary.medianRent).toLocaleString()}
+                </span>
               </p>
             )}
 
             {market.summary.dom && (
-              <p className="text-slate-400">
-                Days on market {market.summary.dom}
+              <p className="text-white/65">
+                Days on market{" "}
+                <span className="text-white/85">
+                  {market.summary.dom}
+                </span>
               </p>
             )}
           </div>
         ) : (
-          <p className="mt-3 text-xs text-slate-500">No snapshot yet.</p>
+          <p className="mt-3 text-xs text-white/50">
+            No snapshot yet.
+          </p>
         )}
       </Link>
     </div>
