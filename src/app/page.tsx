@@ -59,9 +59,25 @@ export default function DashboardPage() {
 
       if (!res.ok) {
         const msg = await res.json().catch(() => null);
-        setError(msg?.error ?? "Failed to add market.");
+        switch (msg?.code) {
+          case "RENTCAST_NO_DATA":
+            setError("No data available for that ZIP. Try a nearby ZIP.");
+            break;
+      
+          case "RENTCAST_RATE_LIMIT":
+            setError("Monthly data limit reached. Please try again later.");
+            break;
+      
+          case "RENTCAST_PROVIDER_ERROR":
+            setError("Market data provider is temporarily unavailable.");
+            break;
+      
+          default:
+            setError(msg?.error ?? "Failed to add market.");
+        }
         return;
       }
+      setError(null);
 
       const { market, snapshot } = await res.json();
       const kpis = snapshot.kpis as any;
