@@ -1,6 +1,4 @@
 // src/providers/rentcast.ts
-import { withRentCastBudget } from "@/lib/apiUsage";
-
 export type Dimensions = { propertyType?: "sfh" | "condo" | "2to4" };
 
 export type ProviderSnapshot = {
@@ -59,32 +57,26 @@ async function rentcastFetch(
     throw new Error("RENTCAST_API_KEY not set");
   }
 
-  return withRentCastBudget(async () => {
-    const url = new URL(path, RENTCAST_BASE_URL);
+  const url = new URL(path, RENTCAST_BASE_URL);
+  Object.entries(searchParams).forEach(([k, v]) => url.searchParams.set(k, v));
 
-    Object.entries(searchParams).forEach(([k, v]) =>
-      url.searchParams.set(k, v)
-    );
+  console.log("[RentCast] Calling:", url.toString());
 
-    console.log("[RentCast] Calling:", url.toString());
-
-    const res = await fetch(url.toString(), {
-      headers: {
-        "X-Api-Key": RENTCAST_API_KEY,
-      },
-      next: { revalidate: 60 * 60 },
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(
-        `[RentCast] ${res.status} ${res.statusText}: ${text || "No body"}`
-      );
-    }
-
-    return res.json();
+  const res = await fetch(url.toString(), {
+    headers: { "X-Api-Key": RENTCAST_API_KEY },
+    next: { revalidate: 60 * 60 },
   });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `[RentCast] ${res.status} ${res.statusText}: ${text || "No body"}`
+    );
+  }
+
+  return res.json();
 }
+
 
 // ===== /v1/markets types + fetch =====
 
