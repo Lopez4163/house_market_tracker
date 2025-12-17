@@ -5,7 +5,6 @@ import { fetchRentCastAggregate } from "@/providers/rentcast";
 import { resolveZip } from "@/lib/geo";
 import { withRentCastBudget } from "@/lib/apiUsage";
 
-
 type PropertyType = "sfh" | "condo" | "2to4";
 
 type PostBody = {
@@ -22,50 +21,41 @@ function isFresh(asOf: Date, ttlHours = 24) {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as PostBody;
-    const rawZip = body.zip ?? "";
-    const zip = rawZip.toString().trim();
+    const zip = (body.zip ?? "").toString().trim();
     const propertyType = body.propertyType ?? "sfh";
 
     if (!/^\d{5}$/.test(zip)) {
       return NextResponse.json(
-        { error: "zip (5 digits) is required" },
+        { error: "zip (5 digits) is required", code: "INVALID_ZIP" },
         { status: 400 }
       );
     }
 
     const marketId = `zip:${zip}`;
 
-    // 1) Find latest snapshot FIRST (so we don't create a Market if quota is exhausted)
+    // 1) Find latest snapshot first
     let snapshot = await prisma.snapshot.findFirst({
       where: { marketId },
       orderBy: { asOf: "desc" },
     });
 
-    // 2) If no snapshot or stale → call RentCast (budget-guarded) + create snapshot
+    // 2) If stale/missing -> call RentCast (budget-guarded)
+    // BUT do NOT create snapshot until Market exists (FK)
+    let aggregate: any = null;
+
     if (!snapshot || !isFresh(snapshot.asOf)) {
       const dims = { propertyType };
 
-      const aggregate = await withRentCastBudget(() =>
+      aggregate = await withRentCastBudget(() =>
         fetchRentCastAggregate(marketId, dims)
       );
-
-      snapshot = await prisma.snapshot.create({
-        data: {
-          marketId,
-          asOf: aggregate.asOf,
-          kpis: aggregate.kpis as any,
-          series: aggregate.series as any,
-          sourceMeta: aggregate.sourceMeta as any,
-        },
-      });
     }
 
-    // 3) Resolve ZIP → city/state (safe; doesn't burn quota)
+    // 3) Upsert Market (only after we know RentCast didn't fail)
     const loc = await resolveZip(zip);
     const city = loc?.city ?? null;
     const state = loc?.stateCode ?? null;
 
-    // 4) Upsert Market AFTER snapshot exists (prevents snapshotless cards)
     const market = await prisma.market.upsert({
       where: { id: marketId },
       update: {
@@ -83,20 +73,30 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ market, snapshot });
-  } catch (e: any) {
-    // Turn your helper's error into a frontend-friendly status + message
-    if (e?.message === "RentCast monthly call limit reached") {
-      return NextResponse.json(
-        { error: "API quota exhausted. Cannot make new RentCast calls right now." },
-        { status: 429 }
-      );
+    // 4) If we fetched new data, now create snapshot (FK is satisfied)
+    if (aggregate) {
+      snapshot = await prisma.snapshot.create({
+        data: {
+          marketId: market.id, // same as marketId, but explicit
+          asOf: aggregate.asOf,
+          kpis: aggregate.kpis as any,
+          series: aggregate.series as any,
+          sourceMeta: aggregate.sourceMeta as any,
+        },
+      });
     }
 
+    return NextResponse.json({ market, snapshot }, { status: 200 });
+  } catch (e: any) {
     console.error(e);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: e?.message ?? "Server error", code: e?.code ?? "SERVER_ERROR" },
+      { status: e?.status ?? 500 }
+    );
   }
 }
+
 
 // GET /api/v1/markets
 // List all markets with their latest snapshot (for cards)
@@ -141,5 +141,5 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json(items);
+  return NextResponse.json(items, { status: 200 });
 }

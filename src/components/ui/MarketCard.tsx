@@ -47,7 +47,8 @@ export function MarketCard({ market, onHide }: MarketCardProps) {
             text-white/50
             opacity-0 group-hover:opacity-100
             transition
-            hover:text-white hover:border-white/40
+            hover:text-red-600 hover:border-red-600/50
+            hover:cursor-pointer
             focus-visible:opacity-100
           "
         >
